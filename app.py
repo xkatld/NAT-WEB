@@ -23,8 +23,7 @@ def execute_iptables_command(cmd):
     for arg in cmd:
          if any(c in arg for c in ['&', '|', ';', '`', '$', '>', '<', '(', ')', '{', '}', '\\', '*']):
              print(f"SECURITY ALERT: Potential command injection attempt detected in argument: {arg}")
-             flash(f"错误：命令参数中包含无效字符: {arg}", 'danger')
-             return False, f"无效字符: {arg}"
+             return False, f"错误：命令参数中包含无效字符: {arg}"
          safe_cmd.append(arg)
 
     print(f"正在执行命令: {' '.join(shlex.quote(arg) for arg in safe_cmd)}")
@@ -32,61 +31,63 @@ def execute_iptables_command(cmd):
     try:
         result = subprocess.run(safe_cmd, check=True, capture_output=True, text=True, timeout=10)
         print("命令执行成功。")
-        print("Stdout:", result.stdout)
-        print("Stderr:", result.stderr)
-        flash(f"成功执行 iptables 命令。", 'success')
-        return True, "命令执行成功"
+        # print("Stdout:", result.stdout) # Optional detailed logging
+        # print("Stderr:", result.stderr) # Optional detailed logging
+        return True, "成功"
     except subprocess.CalledProcessError as e:
         print(f"命令执行失败，退出码 {e.returncode}")
-        print("Stdout:", e.stdout)
-        print("Stderr:", e.stderr)
-        error_msg = f"iptables 命令执行失败: {e.stderr.strip()}"
-        flash(f"执行 iptables 命令出错: {error_msg}", 'danger')
-        return False, error_msg
+        # print("Stdout:", e.stdout) # Optional detailed logging
+        # print("Stderr:", e.stderr) # Optional detailed logging
+        return False, f"命令执行失败: {e.stderr.strip()}"
     except FileNotFoundError:
-         error_msg = "未找到 iptables 命令。请确认是否已安装并位于 PATH 中？"
-         flash(f"错误: {error_msg}", 'danger')
-         return False, error_msg
+         print("未找到 iptables 命令。")
+         return False, "未找到 iptables 命令"
     except Exception as e:
-         error_msg = f"发生未知错误: {e}"
-         flash(f"错误: {error_msg}", 'danger')
-         return False, error_msg
+         print(f"发生未知错误: {e}")
+         return False, f"发生未知错误: {e}"
 
 def clear_nat_rules():
     chains_to_clear = ['PREROUTING', 'POSTROUTING', 'OUTPUT']
-
-    success = True
+    messages = []
+    all_ok = True
     for chain in chains_to_clear:
-        print(f"正在清空 nat 表中的链 {chain}...")
         cmd = ['iptables', '-t', 'nat', '-F', chain]
         ok, msg = execute_iptables_command(cmd)
-        if not ok:
-            success = False
-            flash(f"警告：无法清空 NAT 链 {chain}: {msg}。请谨慎操作。", 'warning')
-
-    return success, "尝试清空 NAT 链。"
+        if ok:
+            messages.append(f"成功清空链 {chain}。")
+        else:
+            messages.append(f"警告：清空链 {chain} 失败: {msg}")
+            all_ok = False
+    return all_ok, messages
 
 def apply_all_rules_from_db():
-    print("正在从数据库应用所有规则...")
-    clear_nat_rules()
+    messages = []
+    overall_ok = True
+
+    clear_ok, clear_msgs = clear_nat_rules()
+    messages.extend(clear_msgs)
+    if not clear_ok:
+        overall_ok = False
 
     rules = NatRule.query.all()
     success_count = 0
     fail_count = 0
     for rule in rules:
         cmd = rule.build_iptables_command_add()
-        print(f"正在应用规则 ID {rule.id}: {' '.join(shlex.quote(arg) for arg in cmd)}")
         ok, msg = execute_iptables_command(cmd)
+        rule_summary = f"规则ID {rule.id} ({rule.target} {rule.chain}): "
         if ok:
+            messages.append(rule_summary + "应用成功。")
             success_count += 1
         else:
+            messages.append(rule_summary + f"应用失败: {msg}")
             fail_count += 1
-            print(f"应用规则 ID {rule.id} 失败: {msg}")
+            overall_ok = False
 
-    if fail_count == 0:
-         flash(f"成功从数据库应用 {success_count} 条规则。", 'success')
-    else:
-         flash(f"应用了 {success_count} 条规则，有 {fail_count} 条规则应用失败。", 'warning')
+    final_summary = f"总计：清空链 {'成功' if clear_ok else '失败'}，应用规则 成功={success_count}, 失败={fail_count}。"
+    messages.insert(0, final_summary)
+
+    return overall_ok, messages
 
 class AddNatRuleForm(FlaskForm):
     chain = SelectField('链', choices=[
@@ -163,7 +164,6 @@ def add_rule():
                 db.session.rollback()
                 flash(f'成功应用规则但保存到数据库失败: {e}。规则已激活但未保存！', 'danger')
                 return redirect(url_for('index'))
-
         else:
             flash(f'使用 iptables 应用规则失败。规则未保存到数据库。错误: {msg}', 'danger')
             return render_template('add_rule.html', form=form)
@@ -192,38 +192,39 @@ def delete_rule(rule_id):
 
 @app.route('/apply_all', methods=['POST'])
 def apply_all():
-    apply_all_rules_from_db()
+    overall_ok, messages = apply_all_rules_from_db()
+    for msg in messages:
+         flash(msg, 'success' if '成功' in msg and '失败' not in msg and '警告' not in msg else 'danger' if '失败' in msg else 'warning')
+    if overall_ok:
+         flash("所有规则应用过程完成。", 'success')
+    else:
+         flash("规则应用过程包含失败项，请检查警告/错误信息。", 'danger')
     return redirect(url_for('index'))
 
 @app.before_request
-def create_tables_and_apply_rules_on_first_request():
+def create_tables_on_first_request():
     if not os.path.exists(DB_PATH):
         print(f"未找到数据库文件 {DB_PATH}。正在创建数据库和表。")
         with app.app_context():
             db.create_all()
             print("数据库表已创建。")
 
-    if not getattr(app, '_rules_applied_on_startup', False):
-        print("正在首次请求时从数据库应用规则...")
-        # 注意：这里已经处于请求/应用上下文内部，所以直接调用 apply_all_rules_from_db() 即可
-        # apply_all_rules_from_db()
-        # 实际上，@before_request 是在请求上下文中运行的，flash在这里是允许的
-        # 之前的RuntimeError是在 __main__ 块直接调用时发生的
-        # 为了确保幂等性或在web服务器重启（非应用重启）时也能加载，
-        # 可以在这里再次调用，但更推荐只在 __main__ 块处理一次启动加载
-        # 为避免重复逻辑，这里可以取消或留空
-        pass
-        setattr(app, '_rules_applied_on_startup', True)
+    # 启动时的规则加载只在 __main__ 块处理一次
+    pass
 
 
 if __name__ == '__main__':
-    # 当脚本直接运行时，手动创建应用上下文
-    # 这允许在启动初始化阶段进行数据库操作和使用flash等需要上下文的功能
     with app.app_context():
-        # 在上下文内创建数据库表（如果不存在）
-        db.create_all()
-        # 在上下文内应用数据库中的规则
-        apply_all_rules_from_db()
+        db.create_all() # 确保数据库表在应用上下文内创建
+        print("正在启动时从数据库应用规则...")
+        overall_ok, messages = apply_all_rules_from_db() # 在应用上下文内调用
+        print("\n--- 启动时规则应用报告 ---")
+        for msg in messages:
+            print(msg)
+        print("-------------------------\n")
+        if not overall_ok:
+             print("警告: 启动时应用规则过程包含失败项。")
+
 
     print("\n!!! 安全警告 !!!")
     print("此应用很可能需要 root 权限才能执行 iptables 命令。")
