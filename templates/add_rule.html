@@ -1,116 +1,117 @@
 {% extends 'layout.html' %}
 
 {% block content %}
-<h2>添加新 NAT 规则</h2>
+<h2 class="mb-3">添加新 NAT 规则</h2> {# Add bottom margin #}
+
 <form method="POST">
     {{ form.csrf_token }}
 
-    <div>
-        {{ form.chain.label }}<br>
-        {{ form.chain() }}
+    {# Each form group div #}
+    <div class="mb-3">
+        {{ form.chain.label(class_="form-label") }} {# Add form-label class #}
+        {{ form.chain(class_="form-select") }} {# Add form-select class for select #}
         {% for error in form.chain.errors %}
-            <span style="color: red;">[{{ error }}]</span>
+            <div class="invalid-feedback d-block">{{ error }}</div> {# Display errors with Bootstrap invalid feedback style #}
         {% endfor %}
     </div>
 
-    <div>
-        {{ form.protocol.label }}<br>
-        {{ form.protocol() }}
+    <div class="mb-3">
+        {{ form.protocol.label(class_="form-label") }}
+        {{ form.protocol(class_="form-select") }}
         {% for error in form.protocol.errors %}
-            <span style="color: red;">[{{ error }}]</span>
+            <div class="invalid-feedback d-block">{{ error }}</div>
         {% endfor %}
     </div>
 
-    <div>
-        {{ form.source.label }}<br>
-        {{ form.source(size=50) }}
+    <div class="mb-3">
+        {{ form.source.label(class_="form-label") }}
+        {{ form.source(class_="form-control") }} {# Add form-control class #}
         {% for error in form.source.errors %}
-            <span style="color: red;">[{{ error }}]</span>
+            <div class="invalid-feedback d-block">{{ error }}</div>
         {% endfor %}
     </div>
 
-    <div>
-        {{ form.destination.label }}<br>
-        {{ form.destination(size=50) }}
+    <div class="mb-3">
+        {{ form.destination.label(class_="form-label") }}
+        {{ form.destination(class_="form-control") }}
         {% for error in form.destination.errors %}
-            <span style="color: red;">[{{ error }}]</span>
+            <div class="invalid-feedback d-block">{{ error }}</div>
         {% endfor %}
     </div>
 
-    <div>
-        {{ form.in_interface.label }}<br>
-        {{ form.in_interface(size=10) }}
+    <div class="mb-3">
+        {{ form.in_interface.label(class_="form-label") }}
+        {{ form.in_interface(class_="form-control") }}
         {% for error in form.in_interface.errors %}
-            <span style="color: red;">[{{ error }}]</span>
+            <div class="invalid-feedback d-block">{{ error }}</div>
         {% endfor %}
     </div>
 
-     <div>
-        {{ form.out_interface.label }}<br>
-        {{ form.out_interface(size=10) }}
+     <div class="mb-3">
+        {{ form.out_interface.label(class_="form-label") }}
+        {{ form.out_interface(class_="form-control") }}
         {% for error in form.out_interface.errors %}
-            <span style="color: red;">[{{ error }}]</span>
+            <div class="invalid-feedback d-block">{{ error }}</div>
         {% endfor %}
     </div>
 
-    <div>
-        {{ form.source_port.label }}<br>
-        {{ form.source_port(size=10) }}
+    <div class="mb-3">
+        {{ form.source_port.label(class_="form-label") }}
+        {{ form.source_port(class_="form-control") }}
         {% for error in form.source_port.errors %}
-            <span style="color: red;">[{{ error }}]</span>
+            <div class="invalid-feedback d-block">{{ error }}</div>
         {% endfor %}
-        (需要选择非“任意”协议)
+        <small class="form-text text-muted">需要选择非“任意”协议</small> {# Use small text with muted color #}
     </div>
 
-    <div>
-        {{ form.destination_port.label }}<br>
-        {{ form.destination_port(size=10) }}
+    <div class="mb-3">
+        {{ form.destination_port.label(class_="form-label") }}
+        {{ form.destination_port(class_="form-control") }}
         {% for error in form.destination_port.errors %}
-            <span style="color: red;">[{{ error }}]</span>
+            <div class="invalid-feedback d-block">{{ error }}</div>
         {% endfor %}
-        (需要选择非“任意”协议)
+        <small class="form-text text-muted">需要选择非“任意”协议</small>
     </div>
 
-    <div>
-        {{ form.target.label }}<br>
-        {{ form.target() }}
+    <div class="mb-3">
+        {{ form.target.label(class_="form-label") }}
+        {{ form.target(class_="form-select") }}
         {% for error in form.target.errors %}
-            <span style="color: red;">[{{ error }}]</span>
+            <div class="invalid-feedback d-block">{{ error }}</div>
         {% endfor %}
     </div>
 
-    <div>
-        {{ form.to_destination.label }}<br>
-        {{ form.to_destination(size=50) }}
+    <div class="mb-3">
+        {{ form.to_destination.label(class_="form-label") }}
+        {{ form.to_destination(class_="form-control") }}
         {% for error in form.to_destination.errors %}
-            <span style="color: red;">[{{ error }}]</span>
+            <div class="invalid-feedback d-block">{{ error }}</div>
         {% endfor %}
-        (例如: 192.168.1.100:80, 仅用于 DNAT)
+        <small class="form-text text-muted">(例如: 192.168.1.100:80, 仅用于 DNAT)</small>
     </div>
 
-    <div>
-        {{ form.to_source.label }}<br>
-        {{ form.to_source(size=50) }}
+    <div class="mb-3">
+        {{ form.to_source.label(class_="form-label") }}
+        {{ form.to_source(class_="form-control") }}
         {% for error in form.to_source.errors %}
-            <span style="color: red;">[{{ error }}]</span>
+            <div class="invalid-feedback d-block">{{ error }}</div>
         {% endfor %}
-         (例如: 1.2.3.4, 仅用于 SNAT/MASQUERADE)
+         <small class="form-text text-muted">(例如: 1.2.3.4, 仅用于 SNAT/MASQUERADE)</small>
     </div>
 
-    <div>
-        {{ form.description.label }}<br>
-        {{ form.description(cols=50, rows=3) }}
+    <div class="mb-3">
+        {{ form.description.label(class_="form-label") }}
+        {{ form.description(class_="form-control") }}
         {% for error in form.description.errors %}
-            <span style="color: red;">[{{ error }}]</span>
+            <div class="invalid-feedback d-block">{{ error }}</div>
         {% endfor %}
     </div>
 
-    <br>
-    <div>
-        {{ form.submit() }}
-    </div>
-</form>
+    <button type="submit" class="btn btn-primary">
+        <i class="fas fa-plus-circle me-1"></i> {{ form.submit.label.text }} {# Optional: Add icon if using Font Awesome/Bootstrap Icons #}
+    </button>
+    <a href="{{ url_for('index') }}" class="btn btn-secondary ms-2">取消</a> {# Secondary button with margin start #}
 
-<p><a href="{{ url_for('index') }}">取消</a></p>
+</form>
 
 {% endblock %}
