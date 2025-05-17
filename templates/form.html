@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ 'Edit Rule' if rule else 'Add New Rule' }} - PVE LXC NAT Manager</title>
+     <style>
+        body { font-family: sans-serif; margin: 20px; }
+        form div { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input[type="text"], input[type="number"], select {
+            width: calc(100% - 22px); /* Adjust width considering padding/border */
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box; /* Include padding and border in element's total width and height */
+        }
+         input[type="checkbox"] {
+             margin-right: 5px;
+         }
+        button {
+            padding: 10px 15px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1em;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+         .flash-messages { margin-bottom: 15px; padding: 10px; border-radius: 5px; }
+        .flash-success { background-color: #d4edda; color: #155724; border-color: #c3e6cb; }
+        .flash-error { background-color: #f8d7da; color: #721c24; border-color: #f5c6cb; }
+    </style>
+</head>
+<body>
+    <h1>{{ 'Edit Rule' if rule else 'Add New Rule' }}</h1>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="flash-messages">
+                {% for category, message in messages %}
+                    <div class="flash-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <form method="POST">
+        <div>
+            <label for="description">Description:</label>
+            <input type="text" id="description" name="description" value="{{ rule.description if rule else '' }}" required>
+        </div>
+        <div>
+            <label for="lxc_id">LXC Container ID:</label>
+            <input type="number" id="lxc_id" name="lxc_id" value="{{ rule.lxc_id if rule else '' }}" required min="100">
+        </div>
+         <div>
+            <label for="external_ip">External IP (PVE Host IP):</label>
+            <input type="text" id="external_ip" name="external_ip" value="{{ rule.external_ip if rule else '0.0.0.0' }}" placeholder="e.g., 192.168.1.10 or 0.0.0.0 for all" required>
+            <small>Use 0.0.0.0 for all host IP addresses. Specify a specific IP if needed.</small>
+        </div>
+        <div>
+            <label for="external_port">External Port:</label>
+            <input type="number" id="external_port" name="external_port" value="{{ rule.external_port if rule else '' }}" required min="1" max="65535">
+        </div>
+        <div>
+            <label for="protocol">Protocol:</label>
+            <select id="protocol" name="protocol" required>
+                <option value="tcp" {% if rule and rule.protocol == 'tcp' %}selected{% endif %}>TCP</option>
+                <option value="udp" {% if rule and rule.protocol == 'udp' %}selected{% endif %}>UDP</option>
+                <option value="both" {% if rule and rule.protocol == 'both' %}selected{% endif %}>TCP & UDP</option>
+            </select>
+        </div>
+        <div>
+            <label for="container_port">Container Internal Port:</label>
+            <input type="number" id="container_port" name="container_port" value="{{ rule.container_port if rule else '' }}" required min="1" max="65535">
+        </div>
+         <div>
+            <label for="enabled">Enabled:</label>
+            <input type="checkbox" id="enabled" name="enabled" value="1" {% if rule is none or rule.enabled %}checked{% endif %}> Yes
+        </div>
+        <div>
+            <button type="submit">{{ 'Update Rule' if rule else 'Add Rule' }}</button>
+            <a href="{{ url_for('index') }}"><button type="button">Cancel</button></a>
+        </div>
+    </form>
+</body>
+</html>
