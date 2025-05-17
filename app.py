@@ -150,7 +150,6 @@ def add_rule():
         if new_rule.target == 'MASQUERADE' and new_rule.to_destination:
              flash('MASQUERADE 目标动作不需要填写“目标地址转换”。', 'warning')
 
-
         cmd = new_rule.build_iptables_command_add()
         ok, msg = execute_iptables_command(cmd)
 
@@ -197,7 +196,7 @@ def apply_all():
     return redirect(url_for('index'))
 
 @app.before_request
-def create_tables_and_apply_rules():
+def create_tables_and_apply_rules_on_first_request():
     if not os.path.exists(DB_PATH):
         print(f"未找到数据库文件 {DB_PATH}。正在创建数据库和表。")
         with app.app_context():
@@ -205,22 +204,15 @@ def create_tables_and_apply_rules():
             print("数据库表已创建。")
 
     if not getattr(app, '_rules_applied_on_startup', False):
-        print("正在启动时从数据库应用规则...")
-        with app.app_context():
-            apply_all_rules_from_db()
+        print("正在首次请求时从数据库应用规则...")
+        pass
         setattr(app, '_rules_applied_on_startup', True)
 
-# ... (其他代码)
 
-# --- Running the App ---
 if __name__ == '__main__':
-    # 当脚本直接运行时，手动创建应用上下文
-    # 这允许在启动初始化阶段进行数据库操作和使用flash等需要上下文的功能
     with app.app_context():
-        # 在上下文内创建数据库表（如果不存在）
         db.create_all()
-        # 在上下文内应用数据库中的规则
-        apply_all_rules_from_db() # 确保这个调用在 with 块内部
+        apply_all_rules_from_db()
 
     print("\n!!! 安全警告 !!!")
     print("此应用很可能需要 root 权限才能执行 iptables 命令。")
@@ -229,6 +221,4 @@ if __name__ == '__main__':
     print("请在生产环境中使用生产级 WSGI 服务器和安全的特权执行机制。")
     print("!!! 安全警告 !!!\n")
 
-    # app.run() 函数会自己处理请求和应用上下文，不需要包裹
-    # 注意：在生产环境不应使用 app.run()，应使用 Gunicorn/uWSGI 等 WSGI 服务器
     app.run(host='0.0.0.0', port=5000)
