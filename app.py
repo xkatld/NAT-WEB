@@ -210,10 +210,17 @@ def create_tables_and_apply_rules():
             apply_all_rules_from_db()
         setattr(app, '_rules_applied_on_startup', True)
 
+# ... (其他代码)
+
+# --- Running the App ---
 if __name__ == '__main__':
+    # 当脚本直接运行时，手动创建应用上下文
+    # 这允许在启动初始化阶段进行数据库操作和使用flash等需要上下文的功能
     with app.app_context():
+        # 在上下文内创建数据库表（如果不存在）
         db.create_all()
-        apply_all_rules_from_db()
+        # 在上下文内应用数据库中的规则
+        apply_all_rules_from_db() # 确保这个调用在 with 块内部
 
     print("\n!!! 安全警告 !!!")
     print("此应用很可能需要 root 权限才能执行 iptables 命令。")
@@ -222,4 +229,6 @@ if __name__ == '__main__':
     print("请在生产环境中使用生产级 WSGI 服务器和安全的特权执行机制。")
     print("!!! 安全警告 !!!\n")
 
+    # app.run() 函数会自己处理请求和应用上下文，不需要包裹
+    # 注意：在生产环境不应使用 app.run()，应使用 Gunicorn/uWSGI 等 WSGI 服务器
     app.run(host='0.0.0.0', port=5000)
