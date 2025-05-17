@@ -4,11 +4,12 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>NAT 管理器</title>
+    <!-- BootCDN 是常用的中国CDN -->
     <link href="https://cdn.bootcdn.net/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body>
     <div class="container mt-4">
-        <h1 class="mb-4">NAT 规则管理器 (临时规则)</h1>
+        <h1 class="mb-4">NAT 规则管理器 (临时)</h1>
 
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
