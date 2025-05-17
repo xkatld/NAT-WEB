@@ -9,7 +9,7 @@
 {# 添加规则表单 #}
 <div class="card mb-4">
     <div class="card-header">
-        添加端口转发规则 (DNAT)
+        添加端口转发规则 (DNAT on {{ public_interface }})
     </div>
     <div class="card-body">
         <form method="POST" class="row g-3 align-items-end">
@@ -61,35 +61,6 @@
          {% endif %}
     </div>
 </div>
-
-{# MASQUERADE 管理 #}
-<div class="card mb-4">
-    <div class="card-header">
-        管理 MASQUERADE 规则 (内网通过 {{ public_interface }} 访问外网)
-    </div>
-    <div class="card-body">
-         <p class="card-text text-muted">确保内网设备可以通过 <code>{{ public_interface }}</code> 接口进行源地址转换 (NAT)，以访问互联网。</p>
-         {% if masquerade_exists %}
-             <p class="alert alert-success d-inline-block me-3 mb-0">检测到可能匹配的 MASQUERADE 规则已存在于 POSTROUTING 链。</p>
-         {% else %}
-             <p class="alert alert-warning d-inline-block me-3 mb-0">未检测到可能匹配的 MASQUERADE 规则，或检查失败。</p>
-         {% endif %}
-        <form method="POST" class="row g-3 align-items-center mt-2">
-            {{ masq_form.csrf_token }}
-            {{ masq_form.form_id }} {# 渲染隐藏字段 #}
-             <div class="col-md-auto">
-                {{ masq_form.submit_add(class_="btn btn-success") }}
-             </div>
-             <div class="col-md-auto">
-                 {{ masq_form.submit_remove(class_="btn btn-warning") }}
-             </div>
-             <div class="col-md-auto">
-                 <span class="text-muted">“添加”会创建一个新的标准 MASQUERADE 规则。“移除”会删除 *第一条* 匹配 <code>MASQUERADE -o {{ public_interface }}</code> 的规则。</span>
-             </div>
-        </form>
-    </div>
-</div>
-
 
 {# 规则列表 #}
 <h2 class="mb-3">当前 NAT PREROUTING 规则 (来自 iptables)</h2>
