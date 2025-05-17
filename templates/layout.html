@@ -1,23 +1,39 @@
 <!doctype html>
-<html>
+<html lang="zh-CN"> {# Add lang attribute #}
 <head>
+    <meta charset="utf-8"> {# Specify charset #}
+    <meta name="viewport" content="width=device-width, initial-scale=1"> {# Add viewport meta for responsiveness #}
     <title>NAT 管理器</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    {# 使用 BootCDN 的 Bootstrap 5 CSS 文件 #}
+    <link href="https://cdn.bootcdn.net/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+    {# 如果需要 Bootstrap Icons，可以添加以下链接 #}
+    {# <link href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet"> #}
+    {# 或 Bootstrap Icons: https://cdn.bootcdn.net/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css #}
+
+    {# 移除或忽略本地 style.css #}
 </head>
 <body>
-    <div class="container">
-        <h1>NAT 规则管理器</h1>
+    <div class="container mt-4"> {# Use Bootstrap container and add top margin #}
+        <h1 class="mb-4">NAT 规则管理器</h1> {# Add bottom margin #}
+
+        {# Bootstrap Alert for Flash messages #}
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
-                <ul class="flashes">
                 {% for category, message in messages %}
-                    <li class="{{ category }}">{{ message }}</li>
+                    {# Map Flask categories to Bootstrap alert classes #}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
                 {% endfor %}
-                </ul>
             {% endif %}
         {% endwith %}
-        <hr>
+
+        <hr class="mb-4"> {# Add bottom margin #}
         {% block content %}{% endblock %}
     </div>
+
+    {# 使用 BootCDN 的 Bootstrap 5 JS 文件 (包含 Popper.js) #}
+    <script src="https://cdn.bootcdn.net/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
