@@ -3,13 +3,13 @@
 {% block content %}
 
 <p class="alert alert-info">
-    注意：此页面管理的 NAT 规则直接操作当前系统的 iptables，规则**不会持久化**到文件或数据库。主机重启后规则会丢失，且需要此 Web 应用以足够权限(如 root 或 sudo)运行。
+    注意：此页面管理的 NAT 规则直接操作当前系统的 iptables，规则**不会自动持久化**到文件或数据库。主机重启后规则会丢失，且需要此 Web 应用以足够权限(如 root 或 sudo)运行。公网网卡配置为: <strong>{{ public_interface }}</strong>。
 </p>
 
 {# 添加规则表单 #}
 <div class="card mb-4">
     <div class="card-header">
-        添加端口转发规则 (DNAT on {{ public_interface }})
+        添加端口转发规则 (DNAT)
     </div>
     <div class="card-body">
         <form method="POST" class="row g-3 align-items-end">
@@ -18,7 +18,7 @@
 
             <div class="col-md-auto">
                 {{ dnat_form.protocol.label(class_="form-label") }}
-                {{ dnat_form.protocol(class_="form-select") }}
+                {{ dnat_form.protocol(class_="form-select", **{'is-invalid': dnat_form.protocol.errors}) }}
                 {% for error in dnat_form.protocol.errors %}
                     <div class="invalid-feedback d-block">{{ error }}</div>
                 {% endfor %}
@@ -26,19 +26,19 @@
 
             <div class="col-md-auto">
                 {{ dnat_form.public_port.label(class_="form-label") }}
-                {{ dnat_form.public_port(class_="form-control", type="number", min="1", max="65535", placeholder="主机端口") }}
+                {{ dnat_form.public_port(class_="form-control", type="number", min="1", max="65535", placeholder="主机端口", **{'is-invalid': dnat_form.public_port.errors}) }}
                 {% for error in dnat_form.public_port.errors %}
                     <div class="invalid-feedback d-block">{{ error }}</div>
                 {% endfor %}
             </div>
 
             <div class="col-md-auto d-flex align-items-center mb-3">
-                 <span class="fw-bold fs-5">→ 内网</span>
+                 <span class="fw-bold fs-5 text-muted">({{ public_interface }}:PORT) → 内网</span>
             </div>
 
             <div class="col-md-auto">
                 {{ dnat_form.internal_ip.label(class_="form-label") }}
-                {{ dnat_form.internal_ip(class_="form-control", placeholder="内网 IP") }}
+                {{ dnat_form.internal_ip(class_="form-control", placeholder="内网 IP", **{'is-invalid': dnat_form.internal_ip.errors}) }}
                  {% for error in dnat_form.internal_ip.errors %}
                     <div class="invalid-feedback d-block">{{ error }}</div>
                 {% endfor %}
@@ -46,7 +46,7 @@
 
             <div class="col-md-auto">
                 {{ dnat_form.container_port.label(class_="form-label") }}
-                {{ dnat_form.container_port(class_="form-control", type="number", min="1", max="65535", placeholder="容器端口") }}
+                {{ dnat_form.container_port(class_="form-control", type="number", min="1", max="65535", placeholder="容器端口", **{'is-invalid': dnat_form.container_port.errors}) }}
                  {% for error in dnat_form.container_port.errors %}
                     <div class="invalid-feedback d-block">{{ error }}</div>
                 {% endfor %}
@@ -56,6 +56,9 @@
                 {{ dnat_form.submit(class_="btn btn-primary") }}
             </div>
         </form>
+         {% if dnat_form.errors %}
+             <div class="alert alert-warning mt-3">请检查添加规则表单中的错误。</div>
+         {% endif %}
     </div>
 </div>
 
@@ -65,15 +68,23 @@
         管理 MASQUERADE 规则 (内网通过 {{ public_interface }} 访问外网)
     </div>
     <div class="card-body">
-         <p class="card-text text-muted">确保内网设备可以通过 {{ public_interface }} 接口进行源地址转换 (NAT)，以访问互联网。</p>
-        <form method="POST" class="row g-3 align-items-center">
+         <p class="card-text text-muted">确保内网设备可以通过 <code>{{ public_interface }}</code> 接口进行源地址转换 (NAT)，以访问互联网。</p>
+         {% if masquerade_exists %}
+             <p class="alert alert-success d-inline-block me-3 mb-0">检测到可能匹配的 MASQUERADE 规则已存在于 POSTROUTING 链。</p>
+         {% else %}
+             <p class="alert alert-warning d-inline-block me-3 mb-0">未检测到可能匹配的 MASQUERADE 规则，或检查失败。</p>
+         {% endif %}
+        <form method="POST" class="row g-3 align-items-center mt-2">
             {{ masq_form.csrf_token }}
             {{ masq_form.form_id }} {# 渲染隐藏字段 #}
              <div class="col-md-auto">
-                {{ masq_form.submit(class_="btn btn-success") }}
+                {{ masq_form.submit_add(class_="btn btn-success") }}
              </div>
              <div class="col-md-auto">
-                 <span class="text-muted">点击添加标准 MASQUERADE 规则（通常只需要一条）。如果已存在，会添加重复规则。</span>
+                 {{ masq_form.submit_remove(class_="btn btn-warning") }}
+             </div>
+             <div class="col-md-auto">
+                 <span class="text-muted">“添加”会创建一个新的标准 MASQUERADE 规则。“移除”会删除 *第一条* 匹配 <code>MASQUERADE -o {{ public_interface }}</code> 的规则。</span>
              </div>
         </form>
     </div>
@@ -84,7 +95,7 @@
 <h2 class="mb-3">当前 NAT PREROUTING 规则 (来自 iptables)</h2>
 
 <form action="{{ url_for('clear_all_prerouting') }}" method="post" onsubmit="return confirm('您确定要清空 NAT PREROUTING 链的所有规则吗？此操作不可逆！');" class="mb-3">
-    {{ dnat_form.csrf_token }} {# CSRF for this form #}
+    {{ dnat_form.csrf_token }} {# CSRF for this form (any form's csrf_token is fine) #}
     <button type="submit" class="btn btn-danger">清空所有 PREROUTING 规则</button>
     <p class="text-muted mt-2">警告：这将强制删除 iptables NAT 表 PREROUTING 链的所有规则，包括非本应用添加的！</p>
 </form>
@@ -93,15 +104,17 @@
 {% if rules %}
 <div class="table-responsive">
     <table class="table table-striped table-bordered table-hover caption-top">
-         <caption>当前的 PREROUTING 转发规则 (仅显示 DNAT)</caption>
+         <caption>当前的 PREROUTING 转发规则 (显示所有匹配规则)</caption>
         <thead class="table-light">
             <tr>
                 <th>行号</th>
-                <th>协议</th>
-                <th>入站接口</th>
-                <th>目标端口</th>
-                <th> -> </th>
-                <th>目标地址:端口</th>
+                <th>target</th>
+                <th>prot</th>
+                <th>in</th>
+                <th>out</th>
+                <th>source</th>
+                <th>destination</th>
+                <th>扩展信息 / DNAT目标</th> {# 合并显示扩展信息，并尝试突出DNAT目标 #}
                 <th>操作</th>
             </tr>
         </thead>
@@ -109,16 +122,28 @@
             {% for rule in rules %}
             <tr>
                 <td>{{ rule.line_number }}</td>
+                <td>{{ rule.target }}</td>
                 <td>{{ rule.protocol }}</td>
                 <td>{{ rule.in_interface }}</td>
-                <td>{{ rule.dport }}</td>
-                <td>→</td>
-                <td>{{ rule.to_destination }}</td>
+                <td>{{ rule.out_interface }}</td>
+                <td>{{ rule.source }}</td>
+                <td>{{ rule.destination }}</td>
+                <td>
+                    {% if rule.target == 'DNAT' and rule.to_destination %}
+                         <span class="badge bg-info me-1">DNAT</span> {{ rule.to_destination }}
+                         {% if rule.extra_info %}
+                             <small class="text-muted"> ({{ rule.extra_info }})</small>
+                         {% endif %}
+                    {% else %}
+                        {{ rule.extra_info or '-' }} {# 如果没有扩展信息则显示 '-' #}
+                    {% endif %}
+                </td>
                 <td>
                     <form action="{{ url_for('index') }}" method="post" style="display:inline;">
                         {{ dnat_form.csrf_token }} {# CSRF for this delete form #}
                         <input type="hidden" name="line_number" value="{{ rule.line_number }}">
-                        <button type="submit" class="btn btn-danger btn-sm" name="delete_rule_submit" onclick="return confirm('您确定要删除行号为 {{ rule.line_number }} 的规则吗？\n注意：行号可能会变化，请谨慎操作！');">删除</button>
+                         {# 使用 name="delete_rule_submit" 区分是删除请求 #}
+                        <button type="submit" class="btn btn-danger btn-sm" name="delete_rule_submit" onclick="return confirm('您确定要删除行号为 {{ rule.line_number }} 的规则吗？\n请注意：如果您在页面加载后添加或删除了其他规则，此行号可能已不准确！\n建议删除后刷新页面。');">删除</button>
                     </form>
                 </td>
             </tr>
@@ -126,10 +151,10 @@
         </tbody>
     </table>
 </div>
-<p class="text-muted">注意：此列表尝试解析并显示 NAT 表 PREROUTING 链中符合简单 DNAT 格式的规则。删除操作基于当前的行号，如果在操作期间其他规则有变动，行号可能不再准确。</p>
+<p class="text-muted">此列表尝试解析并显示 NAT 表 PREROUTING 链的所有规则。列为 <code>*</code> 表示匹配任何。删除操作基于当前页面加载时获取的行号，如果您在操作期间其他规则有变动，行号可能不再准确。请刷新页面以获取最新的规则列表和行号。</p>
 {% else %}
 <div class="alert alert-info" role="alert">
-    NAT PREROUTING 链当前没有符合格式的转发规则。请添加一条规则。
+    NAT 表 PREROUTING 链当前没有规则，或者无法解析规则输出。请尝试添加一条规则。
 </div>
 {% endif %}
 
