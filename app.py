@@ -211,10 +211,9 @@ def create_tables_and_apply_rules():
         setattr(app, '_rules_applied_on_startup', True)
 
 if __name__ == '__main__':
-    # 在应用上下文内创建数据库表和应用规则
     with app.app_context():
         db.create_all()
-        apply_all_rules_from_db() # 现在这个调用被包裹在应用上下文内
+        apply_all_rules_from_db()
 
     print("\n!!! 安全警告 !!!")
     print("此应用很可能需要 root 权限才能执行 iptables 命令。")
@@ -223,5 +222,4 @@ if __name__ == '__main__':
     print("请在生产环境中使用生产级 WSGI 服务器和安全的特权执行机制。")
     print("!!! 安全警告 !!!\n")
 
-    # app.run 会在内部创建请求上下文和应用上下文，所以这里不需要再手动包裹
     app.run(host='0.0.0.0', port=5000)
