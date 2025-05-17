@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PVE LXC NAT Manager</title>
+    <title>PVE LXC NAT 管理器</title>
     <style>
         body { font-family: sans-serif; margin: 20px; }
         table { border-collapse: collapse; width: 100%; margin-top: 20px; }
@@ -19,7 +19,7 @@
     </style>
 </head>
 <body>
-    <h1>PVE LXC NAT Manager</h1>
+    <h1>PVE LXC NAT 管理器</h1>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
@@ -32,25 +32,25 @@
     {% endwith %}
 
     <p>
-        <a href="{{ url_for('add_rule') }}"><button>Add New Rule</button></a>
+        <a href="{{ url_for('add_rule') }}"><button>添加新规则</button></a>
         <form method="POST" action="{{ url_for('apply_all') }}" style="display: inline;">
-             <button type="submit">Apply All Enabled Rules to Firewall</button>
+             <button type="submit">应用所有已启用规则到防火墙</button>
         </form>
     </p>
 
-    <h2>NAT Rules</h2>
+    <h2>NAT 规则列表</h2>
     <table>
         <thead>
             <tr>
                 <th>ID</th>
-                <th>Description</th>
+                <th>描述</th>
                 <th>LXC ID</th>
-                <th>Ext IP</th>
-                <th>Ext Port</th>
-                <th>Proto</th>
-                <th>Container Port</th>
-                 <th>Status</th>
-                <th>Actions</th>
+                <th>外部 IP</th>
+                <th>外部端口</th>
+                <th>协议</th>
+                <th>容器端口</th>
+                <th>状态</th>
+                <th>操作</th>
             </tr>
         </thead>
         <tbody>
@@ -65,30 +65,30 @@
                 <td>{{ rule.container_port }}</td>
                 <td>
                     <span class="status {% if rule.enabled %}enabled{% else %}disabled{% endif %}">
-                        {{ "Enabled" if rule.enabled else "Disabled" }}
+                        {{ "已启用" if rule.enabled else "已禁用" }}
                     </span>
                 </td>
                 <td class="actions">
-                     <form method="POST" action="{{ url_for('toggle_rule', rule_id=rule.id) }}" style="display: inline;">
-                        <button type="submit">{{ "Disable" if rule.enabled else "Enable" }}</button>
+                    <form method="POST" action="{{ url_for('toggle_rule', rule_id=rule.id) }}" style="display: inline;">
+                        <button type="submit">{{ "禁用" if rule.enabled else "启用" }}</button>
                     </form>
-                    <a href="{{ url_for('edit_rule', rule_id=rule.id) }}"><button>Edit</button></a>
-                    <form method="POST" action="{{ url_for('delete_rule', rule_id=rule.id) }}" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete rule ID {{ rule.id }}?');">
-                        <button type="submit">Delete</button>
+                    <a href="{{ url_for('edit_rule', rule_id=rule.id) }}"><button>编辑</button></a>
+                    <form method="POST" action="{{ url_for('delete_rule', rule_id=rule.id) }}" style="display: inline;" onsubmit="return confirm('确定要删除规则 ID {{ rule.id }} 吗？');">
+                        <button type="submit">删除</button>
                     </form>
                 </td>
             </tr>
             {% else %}
             <tr>
-                <td colspan="9">No NAT rules configured yet.</td>
+                <td colspan="9">暂未配置 NAT 规则。</td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
 
     <p style="margin-top: 20px; font-size: 0.9em; color: #555;">
-        Note: Applying rules requires root privileges on the PVE host. Ensure the application is run with appropriate permissions (e.g., via sudo with NOPASSWD configured for the necessary commands).
-        Rules are applied to the custom iptables chain <code>PVE_LXC_NAT</code>.
+        注意：应用规则需要在 PVE 主机上具有 root 权限。请确保应用程序以适当的权限运行（例如，通过配置了 NOPASSWD 的 sudo 来执行必要的命令）。
+        规则将添加到自定义的 iptables 链 <code>PVE_LXC_NAT</code> 中。
     </p>
 
 </body>
