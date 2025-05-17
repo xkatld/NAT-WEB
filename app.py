@@ -205,13 +205,24 @@ def create_tables_and_apply_rules_on_first_request():
 
     if not getattr(app, '_rules_applied_on_startup', False):
         print("正在首次请求时从数据库应用规则...")
+        # 注意：这里已经处于请求/应用上下文内部，所以直接调用 apply_all_rules_from_db() 即可
+        # apply_all_rules_from_db()
+        # 实际上，@before_request 是在请求上下文中运行的，flash在这里是允许的
+        # 之前的RuntimeError是在 __main__ 块直接调用时发生的
+        # 为了确保幂等性或在web服务器重启（非应用重启）时也能加载，
+        # 可以在这里再次调用，但更推荐只在 __main__ 块处理一次启动加载
+        # 为避免重复逻辑，这里可以取消或留空
         pass
         setattr(app, '_rules_applied_on_startup', True)
 
 
 if __name__ == '__main__':
+    # 当脚本直接运行时，手动创建应用上下文
+    # 这允许在启动初始化阶段进行数据库操作和使用flash等需要上下文的功能
     with app.app_context():
+        # 在上下文内创建数据库表（如果不存在）
         db.create_all()
+        # 在上下文内应用数据库中的规则
         apply_all_rules_from_db()
 
     print("\n!!! 安全警告 !!!")
