@@ -4,7 +4,7 @@ import shlex
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_wtf import FlaskForm
 from wtforms import StringField, SelectField, TextAreaField, SubmitField
-from wtforms.validators import DataRequired, Optional, ValidationError
+from wtforms.validators import DataRequired, Optional
 
 from models import db, NatRule
 
@@ -31,13 +31,9 @@ def execute_iptables_command(cmd):
     try:
         result = subprocess.run(safe_cmd, check=True, capture_output=True, text=True, timeout=10)
         print("命令执行成功。")
-        # print("Stdout:", result.stdout) # Optional detailed logging
-        # print("Stderr:", result.stderr) # Optional detailed logging
         return True, "成功"
     except subprocess.CalledProcessError as e:
         print(f"命令执行失败，退出码 {e.returncode}")
-        # print("Stdout:", e.stdout) # Optional detailed logging
-        # print("Stderr:", e.stderr) # Optional detailed logging
         return False, f"命令执行失败: {e.stderr.strip()}"
     except FileNotFoundError:
          print("未找到 iptables 命令。")
@@ -117,6 +113,7 @@ class AddNatRuleForm(FlaskForm):
     description = TextAreaField('描述', validators=[Optional()])
     submit = SubmitField('添加规则')
 
+
 @app.route('/')
 def index():
     rules = NatRule.query.all()
@@ -194,7 +191,15 @@ def delete_rule(rule_id):
 def apply_all():
     overall_ok, messages = apply_all_rules_from_db()
     for msg in messages:
-         flash(msg, 'success' if '成功' in msg and '失败' not in msg and '警告' not in msg else 'danger' if '失败' in msg else 'warning')
+
+         if '成功' in msg and '失败' not in msg and '警告' not in msg:
+              flash(msg, 'success')
+         elif '失败' in msg:
+              flash(msg, 'danger')
+         elif '警告' in msg:
+              flash(msg, 'warning')
+         else:
+              flash(msg, 'info') # Default category for general messages
     if overall_ok:
          flash("所有规则应用过程完成。", 'success')
     else:
@@ -209,15 +214,14 @@ def create_tables_on_first_request():
             db.create_all()
             print("数据库表已创建。")
 
-    # 启动时的规则加载只在 __main__ 块处理一次
-    pass
 
+    pass
 
 if __name__ == '__main__':
     with app.app_context():
-        db.create_all() # 确保数据库表在应用上下文内创建
+        db.create_all()
         print("正在启动时从数据库应用规则...")
-        overall_ok, messages = apply_all_rules_from_db() # 在应用上下文内调用
+        overall_ok, messages = apply_all_rules_from_db()
         print("\n--- 启动时规则应用报告 ---")
         for msg in messages:
             print(msg)
