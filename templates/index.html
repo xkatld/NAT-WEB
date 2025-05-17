@@ -78,12 +78,10 @@
             <tr>
                 <th>行号</th>
                 <th>target</th>
-                <th>prot</th>
-                <th>in</th>
+                <th>Public Access (IP:Port/Prot)</th> {# Combined column header #}
                 <th>out</th>
                 <th>source</th>
-                <th>destination</th>
-                <th>扩展信息 / DNAT目标</th>
+                <th>Forward To (IP:Port) / destination</th> {# Combined column header #}
                 <th>操作</th>
             </tr>
         </thead>
@@ -92,22 +90,35 @@
             <tr>
                 <td>{{ rule.line_number }}</td>
                 <td>{{ rule.target }}</td>
-                <td>{{ rule.protocol }}</td>
-                <td>{{ rule.in_interface }}</td>
-                <td>{{ rule.out_interface }}</td>
-                <td>{{ rule.source }}</td>
-                <td>{{ rule.destination }}</td>
-                <td>
+                <td>{# Public Access Column #}
+                     {% if rule.protocol == 'tcp' and rule.public_port and interface_ip and interface_ip not in ['未找到IP', '获取失败'] %}
+                          <a href="http://{{ interface_ip }}:{{ rule.public_port }}" target="_blank" class="text-decoration-none">
+                             <strong>{{ interface_ip }}:{{ rule.public_port }}</strong>
+                          </a>
+                          /{{ rule.protocol }}{# Show protocol #}
+                     {% else %}
+                          {# Display public info without link #}
+                          {{ interface_ip or '?' }}:{{ rule.public_port or '?' }}/{{ rule.protocol or '?' }}
+                     {% endif %}
+                </td>
+                <td>{{ rule.out_interface or '*' }}</td>
+                <td>{{ rule.source or 'any' }}</td>
+                <td>{# Forward To Column #}
                     {% if rule.target == 'DNAT' and rule.to_destination %}
                          <span class="badge bg-info me-1">DNAT</span> {{ rule.to_destination }}
-                         {% if rule.extra_info %}
-                             <small class="text-muted"> ({{ rule.extra_info }})</small>
+                         {% if rule.extra_info and 'to:' not in rule.extra_info %}
+                              <small class="text-muted"> ({{ rule.extra_info }})</small>
                          {% endif %}
+                    {% elif rule.destination %}
+                        {{ rule.destination or 'any' }}
+                        {% if rule.extra_info %}
+                             <small class="text-muted"> ({{ rule.extra_info }})</small>
+                        {% endif %}
                     {% else %}
-                        {{ rule.extra_info or '-' }}
+                        -
                     {% endif %}
                 </td>
-                <td>
+                <td>{# Action column #}
                     <form action="{{ url_for('index') }}" method="post" style="display:inline;">
                         {{ dnat_form.csrf_token }}
                         <input type="hidden" name="line_number" value="{{ rule.line_number }}">
