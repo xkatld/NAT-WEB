@@ -1,12 +1,11 @@
 from flask import Flask, render_template, request, redirect, url_for, g, flash
 import database
 import firewall
-import sys # Import sys for stderr
+import sys
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'your_secret_key_change_this' # Change this to a random secret key!
+app.config['SECRET_KEY'] = 'your_secret_key_change_this'
 
-# Database initialization on app startup
 @app.before_request
 def before_request():
     database.get_db()
@@ -17,19 +16,16 @@ def teardown_request(exception):
 
 @app.cli.command('initdb')
 def initdb_command():
-    """Initializes the database."""
     database.init_db()
-    print('Initialized the database.')
+    print('数据库初始化命令执行完成。')
 
 @app.route('/')
 def index():
-    """Display all NAT rules."""
     rules = database.get_all_rules()
     return render_template('index.html', rules=rules)
 
 @app.route('/add', methods=('GET', 'POST'))
 def add_rule():
-    """Add a new NAT rule."""
     if request.method == 'POST':
         description = request.form['description']
         lxc_id = request.form['lxc_id']
@@ -37,54 +33,51 @@ def add_rule():
         external_port = request.form['external_port']
         protocol = request.form['protocol']
         external_ip = request.form.get('external_ip', '0.0.0.0')
-        enabled = 'enabled' in request.form # Checkbox value
+        enabled = 'enabled' in request.form
 
-        # Basic validation
         if not description or not lxc_id or not container_port or not external_port or not protocol:
-            flash('All fields are required except External IP (defaults to 0.0.0.0).', 'error')
+            flash('除了外部 IP（默认为 0.0.0.0），所有字段都是必填的。', 'error')
         else:
             try:
                 lxc_id = int(lxc_id)
                 container_port = int(container_port)
                 external_port = int(external_port)
                 if lxc_id < 100 or container_port < 1 or container_port > 65535 or external_port < 1 or external_port > 65535:
-                     flash('Invalid ID or port number.', 'error')
-                     return render_template('form.html', rule=request.form) # Render form with user input
+                     flash('无效的 ID 或端口号。', 'error')
+                     return render_template('form.html', rule=request.form)
                 if protocol not in ['tcp', 'udp', 'both']:
-                     flash('Invalid protocol.', 'error')
-                     return render_template('form.html', rule=request.form) # Render form with user input
+                     flash('无效的协议。', 'error')
+                     return render_template('form.html', rule=request.form)
 
                 rule_id = database.add_rule(description, lxc_id, container_port, external_port, protocol, external_ip, enabled)
 
                 if rule_id:
-                    flash(f'Rule "{description}" added successfully.', 'success')
-                    # Automatically apply rules after adding/modifying
+                    flash(f'规则 "{description}" 添加成功。', 'success')
                     success_count, failed_count, errors = firewall.apply_all_rules(database.get_all_rules())
                     if failed_count > 0:
-                         flash(f'Warning: Failed to apply {failed_count} rule(s) to firewall. Check console output for details.', 'error')
+                         flash(f'警告：有 {failed_count} 条规则未能应用到防火墙。请检查控制台输出获取详细信息。', 'error')
                          for err in errors:
-                             print(err, file=sys.stderr) # Log errors to stderr
+                             print(err, file=sys.stderr)
                     else:
-                         flash('Firewall rules updated.', 'success')
+                         flash('防火墙规则已更新。', 'success')
                     return redirect(url_for('index'))
                 else:
-                    flash('Error adding rule. Likely a duplicate external IP/Port/Protocol combination.', 'error')
+                    flash('添加规则失败。可能存在重复的外部 IP/端口/协议组合。', 'error')
 
             except ValueError:
-                 flash('Invalid number format for ID or ports.', 'error')
+                 flash('ID 或端口号格式无效。', 'error')
             except Exception as e:
-                 flash(f'An unexpected error occurred: {e}', 'error')
+                 flash(f'发生未知错误：{e}', 'error')
 
 
     return render_template('form.html')
 
 @app.route('/edit/<int:rule_id>', methods=('GET', 'POST'))
 def edit_rule(rule_id):
-    """Edit an existing NAT rule."""
     rule = database.get_rule(rule_id)
 
     if rule is None:
-        flash('Rule not found.', 'error')
+        flash('未找到规则。', 'error')
         return redirect(url_for('index'))
 
     if request.method == 'POST':
@@ -96,126 +89,108 @@ def edit_rule(rule_id):
         external_ip = request.form.get('external_ip', '0.0.0.0')
         enabled = 'enabled' in request.form
 
-        # Basic validation
         if not description or not lxc_id or not container_port or not external_port or not protocol:
-            flash('All fields are required except External IP.', 'error')
+            flash('除了外部 IP，所有字段都是必填的。', 'error')
         else:
              try:
                 lxc_id = int(lxc_id)
                 container_port = int(container_port)
                 external_port = int(external_port)
                 if lxc_id < 100 or container_port < 1 or container_port > 65535 or external_port < 1 or external_port > 65535:
-                     flash('Invalid ID or port number.', 'error')
-                     return render_template('form.html', rule=request.form) # Render form with user input
+                     flash('无效的 ID 或端口号。', 'error')
+                     return render_template('form.html', rule=request.form)
                 if protocol not in ['tcp', 'udp', 'both']:
-                     flash('Invalid protocol.', 'error')
-                     return render_template('form.html', rule=request.form) # Render form with user input
+                     flash('无效的协议。', 'error')
+                     return render_template('form.html', rule=request.form)
 
                 if database.update_rule(rule_id, description, lxc_id, container_port, external_port, protocol, external_ip, enabled):
-                    flash(f'Rule ID {rule_id} updated successfully.', 'success')
-                    # Automatically apply rules after adding/modifying
+                    flash(f'规则 ID {rule_id} 更新成功。', 'success')
                     success_count, failed_count, errors = firewall.apply_all_rules(database.get_all_rules())
                     if failed_count > 0:
-                         flash(f'Warning: Failed to apply {failed_count} rule(s) to firewall. Check console output for details.', 'error')
+                         flash(f'警告：有 {failed_count} 条规则未能应用到防火墙。请检查控制台输出获取详细信息。', 'error')
                          for err in errors:
-                             print(err, file=sys.stderr) # Log errors to stderr
+                             print(err, file=sys.stderr)
                     else:
-                         flash('Firewall rules updated.', 'success')
+                         flash('防火墙规则已更新。', 'success')
                     return redirect(url_for('index'))
                 else:
-                    flash('Error updating rule. Likely a duplicate external IP/Port/Protocol combination.', 'error')
+                    flash('更新规则失败。可能存在重复的外部 IP/端口/协议组合。', 'error')
 
              except ValueError:
-                 flash('Invalid number format for ID or ports.', 'error')
+                 flash('ID 或端口号格式无效。', 'error')
              except Exception as e:
-                 flash(f'An unexpected error occurred: {e}', 'error')
-
+                 flash(f'发生未知错误：{e}', 'error')
 
     return render_template('form.html', rule=rule)
 
 @app.route('/delete/<int:rule_id>', methods=('POST',))
 def delete_rule(rule_id):
-    """Delete a NAT rule."""
-    # Check if rule exists before deleting
     rule = database.get_rule(rule_id)
     if rule is None:
-        flash('Rule not found.', 'error')
+        flash('未找到规则。', 'error')
         return redirect(url_for('index'))
 
     database.delete_rule(rule_id)
-    flash(f'Rule ID {rule_id} deleted successfully.', 'success')
+    flash(f'规则 ID {rule_id} 删除成功。', 'success')
 
-    # Automatically apply rules after deleting
     success_count, failed_count, errors = firewall.apply_all_rules(database.get_all_rules())
     if failed_count > 0:
-         flash(f'Warning: Failed to apply {failed_count} rule(s) to firewall after deletion. Check console output for details.', 'error')
+         flash(f'警告：删除后有 {failed_count} 条规则未能应用到防火墙。请检查控制台输出获取详细信息。', 'error')
          for err in errors:
-             print(err, file=sys.stderr) # Log errors to stderr
+             print(err, file=sys.stderr)
     else:
-         flash('Firewall rules updated.', 'success')
-
+         flash('防火墙规则已更新。', 'success')
 
     return redirect(url_for('index'))
 
 @app.route('/toggle/<int:rule_id>', methods=('POST',))
 def toggle_rule(rule_id):
-    """Toggle the enabled status of a rule."""
     rule = database.get_rule(rule_id)
     if rule is None:
-        flash('Rule not found.', 'error')
+        flash('未找到规则。', 'error')
         return redirect(url_for('index'))
 
     new_status = database.toggle_rule_enabled(rule_id)
     if new_status is not None:
-        status_text = "Enabled" if new_status else "Disabled"
-        flash(f'Rule ID {rule_id} status toggled to "{status_text}".', 'success')
+        status_text = "已启用" if new_status else "已禁用"
+        flash(f'规则 ID {rule_id} 状态已切换为 "{status_text}"。', 'success')
 
-        # Automatically apply rules after toggling
         success_count, failed_count, errors = firewall.apply_all_rules(database.get_all_rules())
         if failed_count > 0:
-             flash(f'Warning: Failed to apply {failed_count} rule(s) to firewall after toggling. Check console output for details.', 'error')
+             flash(f'警告：切换状态后有 {failed_count} 条规则未能应用到防火墙。请检查控制台输出获取详细信息。', 'error')
              for err in errors:
-                 print(err, file=sys.stderr) # Log errors to stderr
+                 print(err, file=sys.stderr)
         else:
-             flash('Firewall rules updated.', 'success')
+             flash('防火墙规则已更新。', 'success')
 
     else:
-        flash('Error toggling rule status.', 'error')
+        flash('切换规则状态失败。', 'error')
 
     return redirect(url_for('index'))
 
 
 @app.route('/apply_all', methods=('POST',))
 def apply_all():
-    """Apply all enabled rules from DB to the firewall."""
     rules = database.get_all_rules()
     success_count, failed_count, errors = firewall.apply_all_rules(rules)
 
     if failed_count == 0:
-        flash(f'Successfully applied {success_count} enabled rule(s) to firewall.', 'success')
+        flash(f'成功应用 {success_count} 条已启用规则到防火墙。', 'success')
     elif success_count == 0:
-        flash(f'Failed to apply all {failed_count} enabled rule(s) to firewall. Check console output.', 'error')
+        flash(f'所有 {failed_count} 条已启用规则均未能应用到防火墙。请检查控制台输出。', 'error')
         for err in errors:
-            print(err, file=sys.stderr) # Log errors to stderr
+            print(err, file=sys.stderr)
     else:
-        flash(f'Applied {success_count} rule(s), but failed to apply {failed_count} rule(s). Check console output.', 'error')
+        flash(f'应用了 {success_count} 条规则，但有 {failed_count} 条规则未能应用。请检查控制台输出。', 'error')
         for err in errors:
-            print(err, file=sys.stderr) # Log errors to stderr
-
+            print(err, file=sys.stderr)
 
     return redirect(url_for('index'))
 
-# To run the app (for development)
 if __name__ == '__main__':
-    # Make sure the database is initialized
     with app.app_context():
         database.init_db()
-        # Optional: Apply rules on startup
-        print("Applying rules on startup...")
+        print("启动时应用规则...")
         firewall.apply_all_rules(database.get_all_rules())
 
-
-    # WARNING: Running debug=True in production is DANGEROUS!
-    # WARNING: Running app.run() as root is DANGEROUS!
-    # Use a proper WSGI server (like Gunicorn/uWSGI) and configure sudo for firewall commands in production.
     app.run(host='0.0.0.0', port=5000, debug=True)
