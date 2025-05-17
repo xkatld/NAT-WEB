@@ -1,3 +1,5 @@
+# app.py
+
 from flask import Flask, render_template, request, redirect, url_for, g, flash
 import database
 import firewall
@@ -44,9 +46,11 @@ def add_rule():
                 external_port = int(external_port)
                 if lxc_id < 100 or container_port < 1 or container_port > 65535 or external_port < 1 or external_port > 65535:
                      flash('无效的 ID 或端口号。', 'error')
+                     # 在错误时也传递 request.form 以保留用户输入
                      return render_template('form.html', rule=request.form)
                 if protocol not in ['tcp', 'udp', 'both']:
                      flash('无效的协议。', 'error')
+                      # 在错误时也传递 request.form 以保留用户输入
                      return render_template('form.html', rule=request.form)
 
                 rule_id = database.add_rule(description, lxc_id, container_port, external_port, protocol, external_ip, enabled)
@@ -66,11 +70,15 @@ def add_rule():
 
             except ValueError:
                  flash('ID 或端口号格式无效。', 'error')
+                 # 在错误时也传递 request.form 以保留用户输入
+                 return render_template('form.html', rule=request.form)
             except Exception as e:
                  flash(f'发生未知错误：{e}', 'error')
+                 # 在错误时也传递 request.form 以保留用户输入
+                 return render_template('form.html', rule=request.form)
 
-
-    return render_template('form.html')
+    # 处理 GET 请求时，明确传递 rule=None
+    return render_template('form.html', rule=None)
 
 @app.route('/edit/<int:rule_id>', methods=('GET', 'POST'))
 def edit_rule(rule_id):
@@ -98,10 +106,14 @@ def edit_rule(rule_id):
                 external_port = int(external_port)
                 if lxc_id < 100 or container_port < 1 or container_port > 65535 or external_port < 1 or external_port > 65535:
                      flash('无效的 ID 或端口号。', 'error')
-                     return render_template('form.html', rule=request.form)
+                     # 在错误时传递 request.form 以保留用户输入，但要将它转换为字典以便模板访问 (request.form 是 CombinedMultiDict)
+                     # 或者更简单地，传递原始 rule 对象以便模板正确显示原始值
+                     # 这里我们选择传递原始 rule 对象，如果用户提交了POST，那么用户输入应该已经在request.form里了
+                     return render_template('form.html', rule=rule) # Re-render with original rule data
+
                 if protocol not in ['tcp', 'udp', 'both']:
                      flash('无效的协议。', 'error')
-                     return render_template('form.html', rule=request.form)
+                     return render_template('form.html', rule=rule) # Re-render with original rule data
 
                 if database.update_rule(rule_id, description, lxc_id, container_port, external_port, protocol, external_ip, enabled):
                     flash(f'规则 ID {rule_id} 更新成功。', 'success')
@@ -115,12 +127,17 @@ def edit_rule(rule_id):
                     return redirect(url_for('index'))
                 else:
                     flash('更新规则失败。可能存在重复的外部 IP/端口/协议组合。', 'error')
+                    return render_template('form.html', rule=rule) # Re-render with original rule data
+
 
              except ValueError:
                  flash('ID 或端口号格式无效。', 'error')
+                 return render_template('form.html', rule=rule) # Re-render with original rule data
              except Exception as e:
                  flash(f'发生未知错误：{e}', 'error')
+                 return render_template('form.html', rule=rule) # Re-render with original rule data
 
+    # 处理 GET 请求时，传递查询到的 rule 对象
     return render_template('form.html', rule=rule)
 
 @app.route('/delete/<int:rule_id>', methods=('POST',))
@@ -191,6 +208,13 @@ if __name__ == '__main__':
     with app.app_context():
         database.init_db()
         print("启动时应用规则...")
-        firewall.apply_all_rules(database.get_all_rules())
+        # 启动时应用规则可能会失败，但应用本身应该继续运行，用户可以在界面手动触发应用。
+        # 这里的失败不应阻止web服务器启动。
+        apply_success, apply_failed, apply_errors = firewall.apply_all_rules(database.get_all_rules())
+        if apply_failed > 0:
+             print(f"启动时应用规则失败：成功 {apply_success}, 失败 {apply_failed}", file=sys.stderr)
+             for err in apply_errors:
+                 print(err, file=sys.stderr)
+
 
     app.run(host='0.0.0.0', port=5000, debug=True)
