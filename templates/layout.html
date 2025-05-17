@@ -4,7 +4,14 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>NAT 管理器</title>
+    <!-- BootCDN 是常用的中国CDN -->
     <link href="https://cdn.bootcdn.net/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+     <style>
+        /* Optional: Add some basic transition for smoother hover effect */
+        .table-hover tbody tr:hover {
+             transition: background-color 0.3s ease;
+        }
+    </style>
 </head>
 <body>
     <div class="container mt-4">
@@ -26,5 +33,8 @@
     </div>
 
     <script src="https://cdn.bootcdn.net/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+    <!-- jQuery CDN from BootCDN -->
+    <script src="https://cdn.bootcdn.net/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    {% block scripts %}{% endblock %}
 </body>
 </html>
