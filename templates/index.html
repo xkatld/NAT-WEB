@@ -1,0 +1,61 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<h2>当前 NAT 规则 (来自数据库)</h2>
+<p><a href="{{ url_for('add_rule') }}">添加新规则</a></p>
+
+<form action="{{ url_for('apply_all') }}" method="post" onsubmit="return confirm('您确定要清空所有当前 NAT 规则并从数据库重新应用吗？');">
+    <button type="submit">清空并应用所有数据库规则</button>
+    <p class="warning-text">警告：这将刷新您系统上现有的 NAT 规则，并仅应用下方列表中的规则。</p>
+</form>
+
+{% if rules %}
+<table border="1">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>链</th>
+            <th>协议</th>
+            <th>源</th>
+            <th>目标</th>
+            <th>入站接口</th>
+            <th>出站接口</th>
+            <th>源端口</th>
+            <th>目标端口</th>
+            <th>目标动作</th>
+            <th>目标地址转换</th>
+            <th>源地址转换</th>
+            <th>描述</th>
+            <th>操作</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for rule in rules %}
+        <tr>
+            <td>{{ rule.id }}</td>
+            <td>{{ rule.chain }}</td>
+            <td>{{ rule.protocol or '任意' }}</td>
+            <td>{{ rule.source or '任意' }}</td>
+            <td>{{ rule.destination or '任意' }}</td>
+            <td>{{ rule.in_interface or '任意' }}</td>
+            <td>{{ rule.out_interface or '任意' }}</td>
+            <td>{{ rule.source_port or '任意' }}</td>
+            <td>{{ rule.destination_port or '任意' }}</td>
+            <td>{{ rule.target }}</td>
+            <td>{{ rule.to_destination or '-' }}</td>
+            <td>{{ rule.to_source or '-' }}</td>
+            <td>{{ rule.description or '-' }}</td>
+            <td>
+                <form action="{{ url_for('delete_rule', rule_id=rule.id) }}" method="post" style="display:inline;">
+                    <button type="submit" onclick="return confirm('您确定要删除这条规则吗？');">删除</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p>数据库中没有找到 NAT 规则。</p>
+{% endif %}
+
+{% endblock %}
