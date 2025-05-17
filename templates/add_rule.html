@@ -1,0 +1,116 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<h2>添加新 NAT 规则</h2>
+<form method="POST">
+    {{ form.csrf_token }}
+
+    <div>
+        {{ form.chain.label }}<br>
+        {{ form.chain() }}
+        {% for error in form.chain.errors %}
+            <span style="color: red;">[{{ error }}]</span>
+        {% endfor %}
+    </div>
+
+    <div>
+        {{ form.protocol.label }}<br>
+        {{ form.protocol() }}
+        {% for error in form.protocol.errors %}
+            <span style="color: red;">[{{ error }}]</span>
+        {% endfor %}
+    </div>
+
+    <div>
+        {{ form.source.label }}<br>
+        {{ form.source(size=50) }}
+        {% for error in form.source.errors %}
+            <span style="color: red;">[{{ error }}]</span>
+        {% endfor %}
+    </div>
+
+    <div>
+        {{ form.destination.label }}<br>
+        {{ form.destination(size=50) }}
+        {% for error in form.destination.errors %}
+            <span style="color: red;">[{{ error }}]</span>
+        {% endfor %}
+    </div>
+
+    <div>
+        {{ form.in_interface.label }}<br>
+        {{ form.in_interface(size=10) }}
+        {% for error in form.in_interface.errors %}
+            <span style="color: red;">[{{ error }}]</span>
+        {% endfor %}
+    </div>
+
+     <div>
+        {{ form.out_interface.label }}<br>
+        {{ form.out_interface(size=10) }}
+        {% for error in form.out_interface.errors %}
+            <span style="color: red;">[{{ error }}]</span>
+        {% endfor %}
+    </div>
+
+    <div>
+        {{ form.source_port.label }}<br>
+        {{ form.source_port(size=10) }}
+        {% for error in form.source_port.errors %}
+            <span style="color: red;">[{{ error }}]</span>
+        {% endfor %}
+        (需要选择非“任意”协议)
+    </div>
+
+    <div>
+        {{ form.destination_port.label }}<br>
+        {{ form.destination_port(size=10) }}
+        {% for error in form.destination_port.errors %}
+            <span style="color: red;">[{{ error }}]</span>
+        {% endfor %}
+        (需要选择非“任意”协议)
+    </div>
+
+    <div>
+        {{ form.target.label }}<br>
+        {{ form.target() }}
+        {% for error in form.target.errors %}
+            <span style="color: red;">[{{ error }}]</span>
+        {% endfor %}
+    </div>
+
+    <div>
+        {{ form.to_destination.label }}<br>
+        {{ form.to_destination(size=50) }}
+        {% for error in form.to_destination.errors %}
+            <span style="color: red;">[{{ error }}]</span>
+        {% endfor %}
+        (例如: 192.168.1.100:80, 仅用于 DNAT)
+    </div>
+
+    <div>
+        {{ form.to_source.label }}<br>
+        {{ form.to_source(size=50) }}
+        {% for error in form.to_source.errors %}
+            <span style="color: red;">[{{ error }}]</span>
+        {% endfor %}
+         (例如: 1.2.3.4, 仅用于 SNAT/MASQUERADE)
+    </div>
+
+    <div>
+        {{ form.description.label }}<br>
+        {{ form.description(cols=50, rows=3) }}
+        {% for error in form.description.errors %}
+            <span style="color: red;">[{{ error }}]</span>
+        {% endfor %}
+    </div>
+
+    <br>
+    <div>
+        {{ form.submit() }}
+    </div>
+</form>
+
+<p><a href="{{ url_for('index') }}">取消</a></p>
+
+{% endblock %}
