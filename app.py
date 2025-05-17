@@ -91,8 +91,13 @@ def list_nat_rules(table, chain):
                      'source': source,
                      'destination': destination,
                      'extra_info': extra_info,
+                     'public_port': None,
                      'to_destination': None
                  }
+
+                 dport_match = re.search(r'dpt:(\d+)', extra_info)
+                 if dport_match:
+                      rule_data['public_port'] = dport_match.group(1)
 
                  if target == 'DNAT':
                       to_match = re.search(r'to:([\w\d\.:-]+)', extra_info)
@@ -125,7 +130,6 @@ def get_interface_ip(interface_name):
     print(f"获取网卡IP: {' '.join(cmd)}")
     try:
         result = subprocess.run(cmd, check=True, capture_output=True, text=True, timeout=5, encoding='utf-8', errors='replace')
-        # 查找 inet ... /...
         match = re.search(r'inet (\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/', result.stdout)
         if match:
             print(f"获取到IP: {match.group(1)}")
@@ -225,6 +229,7 @@ def index():
                            rules=prerouting_rules,
                            public_interface=PUBLIC_INTERFACE,
                            interface_ip=interface_ip)
+
 
 @app.route('/clear_all_prerouting', methods=['POST'])
 def clear_all_prerouting():
